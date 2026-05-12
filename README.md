@@ -29,7 +29,6 @@ This server handles full CRUD operations for travel destinations:
 - Node.js
 - Express.js
 - MongoDB
-- Mongoose
 
 ---
 
