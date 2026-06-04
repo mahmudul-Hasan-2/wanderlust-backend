@@ -1,9 +1,9 @@
 const dns = require("node:dns");
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
+const dotenv = require("dotenv");
 dotenv.config();
 
 const express = require("express");
-const dotenv = require("dotenv");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
