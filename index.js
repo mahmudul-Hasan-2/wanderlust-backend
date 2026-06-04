@@ -6,6 +6,7 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 dotenv.config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 const uri = process.env.MONGODB_URI;
 const app = express();
 const port = process.env.PORT;
@@ -16,6 +17,29 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("Welcome to wanderlust server");
 });
+
+const JWKS = createRemoteJWKSet(new URL("http://localhost:3000/api/auth/jwks"));
+
+const verifyToken = async (req, res, next) => {
+  const header = req.headers.authorization;
+  if (!header) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const token = header.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  console.log(token);
+
+  try {
+    const { payload } = await jwtVerify(token, JWKS);
+
+    next();
+    console.log(payload);
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -32,12 +56,42 @@ async function run() {
     await client.db("admin").command({ ping: 1 });
     const db = client.db("wanderlust");
     const destinations = db.collection("destinations");
+    const bookings = db.collection("bookings");
+
+    app.post("/bookings", async (req, res) => {
+      const newData = req.body;
+
+      const result = await bookings.insertOne(newData);
+      res.json(result);
+    });
+
+    app.get("/bookings/:userid", async (req, res) => {
+      const { userid } = req.params;
+
+      const query = {
+        userId: userid,
+      };
+
+      const allBookingsData = await bookings.find(query).toArray();
+      res.json(allBookingsData);
+    });
+
+    app.delete("/bookings/:id", async (req, res) => {
+      const { id } = req.params;
+
+      const query = {
+        _id: new ObjectId(id),
+      };
+
+      const result = await bookings.deleteOne(query);
+      res.json(result);
+    });
 
     app.get("/destinations", async (req, res) => {
       const allDestinations = await destinations.find().toArray();
       res.json(allDestinations);
     });
-    app.get("/destinations/:id", async (req, res) => {
+    app.get("/destinations/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
 
       const query = {
